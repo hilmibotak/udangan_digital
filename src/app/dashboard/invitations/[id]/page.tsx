@@ -1,0 +1,9 @@
+import { redirect, notFound } from "next/navigation";
+import Link from "next/link";
+import mongoose from "mongoose";
+import { auth } from "@/lib/auth";
+import { connectDB } from "@/lib/mongodb";
+import Invitation from "@/models/Invitation";
+import { InvitationEditor } from "@/components/invitation-editor";
+export const dynamic = "force-dynamic";
+export default async function InvitationDetailPage({ params }: { params: Promise<{ id: string }> }) { const session = await auth(); if (!session?.user?.id) redirect("/login"); const { id } = await params; if (!mongoose.isValidObjectId(id)) notFound(); await connectDB(); const item = await Invitation.findOne({ _id: id, userId: session.user.id }).lean(); if (!item) notFound(); const data = { id: String(item._id), title: item.title, slug: item.slug, status: item.status, template: item.template, eventDate: item.eventDate?.toISOString() ?? null, quranSurah: item.quranSurah, quranVerse: item.quranVerse, quranText: item.quranText, closingText: item.closingText, groom: item.groom, bride: item.bride }; return <main className="mx-auto min-h-screen max-w-3xl px-5 py-10 md:px-10"><Link className="text-sm text-stone-500" href="/dashboard">← Dashboard</Link><p className="eyebrow mt-8">PENGATURAN UNDANGAN</p><h1 className="mt-2 font-serif text-4xl">{item.title || `${item.groom.name || "Mempelai pria"} & ${item.bride.name || "Mempelai wanita"}`}</h1><p className="mt-2 text-sm text-stone-500">Status: <span className="capitalize">{item.status}</span> · Tautan /undangan/{item.slug}</p><InvitationEditor invitation={data}/></main>; }

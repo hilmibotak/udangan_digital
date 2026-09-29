@@ -1,0 +1,8 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { connectDB } from "@/lib/mongodb";
+import Invitation from "@/models/Invitation";
+import RSVP from "@/models/RSVP";
+import Guest from "@/models/Guest";
+const schema = z.object({ guestName: z.string().trim().min(2).max(100), attendance: z.enum(["attending", "not_attending", "maybe"]), guestCount: z.coerce.number().int().min(1).max(20), message: z.string().trim().max(1000).default("") });
+export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) { const input = schema.safeParse(await request.json().catch(() => null)); if (!input.success) return NextResponse.json({ error: "Periksa nama, pilihan kehadiran, dan jumlah tamu." }, { status: 400 }); try { await connectDB(); const { slug } = await params; const invitation = await Invitation.findOne({ slug, status: "published" }).select("_id"); if (!invitation) return NextResponse.json({ error: "Undangan tidak ditemukan." }, { status: 404 }); await RSVP.create({ ...input.data, invitationId: invitation._id }); const escaped = input.data.guestName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); await Guest.findOneAndUpdate({ invitationId: invitation._id, name: { $regex: `^${escaped}$`, $options: "i" } }, { $set: { rsvpStatus: input.data.attendance }, $setOnInsert: { invitationId: invitation._id, name: input.data.guestName, category: "Umum", invitationStatus: "pending" } }, { upsert: true }).catch(() => null); return NextResponse.json({ data: { submitted: true } }, { status: 201 }); } catch { return NextResponse.json({ error: "RSVP belum dapat dikirim. Coba lagi nanti." }, { status: 503 }); } }

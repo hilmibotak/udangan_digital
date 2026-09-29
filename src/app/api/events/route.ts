@@ -1,0 +1,7 @@
+import { z } from "zod";
+import EventModel from "@/models/Event";
+import { apiFailure, apiSuccess, findOwnedInvitation } from "@/lib/owned-invitation";
+import { httpsUrl } from "@/lib/validation";
+const schema = z.object({ invitationId: z.string(), type: z.enum(["akad", "reception", "other"]), title: z.string().trim().min(1).max(120), date: z.coerce.date(), startTime: z.string().trim().min(1).max(20), endTime: z.string().trim().max(20).default(""), venue: z.string().trim().min(1).max(160), address: z.string().trim().min(1).max(500), mapsUrl: httpsUrl.default("") }).strict();
+export async function GET(request: Request) { try { const id = new URL(request.url).searchParams.get("invitationId") ?? ""; const owned = await findOwnedInvitation(id); if ("response" in owned) return owned.response; return apiSuccess(await EventModel.find({ invitationId: owned.invitationId }).sort({ date: 1 }).lean()); } catch { return apiFailure("Acara belum dapat dimuat."); } }
+export async function POST(request: Request) { const input = schema.safeParse(await request.json().catch(() => null)); if (!input.success) return apiFailure("Data acara tidak valid.", 400); try { const owned = await findOwnedInvitation(input.data.invitationId); if ("response" in owned) return owned.response; return apiSuccess(await EventModel.create({ ...input.data, invitationId: owned.invitationId }), 201); } catch { return apiFailure("Acara gagal disimpan."); } }

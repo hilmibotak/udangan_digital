@@ -1,0 +1,6 @@
+import { z } from "zod";
+import Guest from "@/models/Guest";
+import { apiFailure, apiSuccess, findOwnedInvitation } from "@/lib/owned-invitation";
+const schema = z.object({ invitationId: z.string(), name: z.string().trim().min(2).max(100), phone: z.string().trim().max(32).default(""), category: z.string().trim().max(80).default("Umum"), invitationStatus: z.enum(["pending", "sent"]).default("pending"), rsvpStatus: z.enum(["pending", "attending", "not_attending", "maybe"]).default("pending") }).strict();
+export async function GET(request: Request) { try { const id = new URL(request.url).searchParams.get("invitationId") ?? ""; const owned = await findOwnedInvitation(id); if ("response" in owned) return owned.response; return apiSuccess(await Guest.find({ invitationId: owned.invitationId }).sort({ name: 1 }).lean()); } catch { return apiFailure("Daftar tamu belum dapat dimuat."); } }
+export async function POST(request: Request) { const input = schema.safeParse(await request.json().catch(() => null)); if (!input.success) return apiFailure("Data tamu tidak valid.", 400); try { const owned = await findOwnedInvitation(input.data.invitationId); if ("response" in owned) return owned.response; return apiSuccess(await Guest.create({ ...input.data, invitationId: owned.invitationId }), 201); } catch { return apiFailure("Tamu gagal disimpan."); } }
