@@ -194,9 +194,7 @@ export default function InvitationCreateForm() {
         );
       }
 
-      router.push(
-        `/dashboard/undangan/${invitationId}`
-      );
+      router.push(`/dashboard/invitations/${invitationId}`);
 
       router.refresh();
     } catch (err) {
@@ -523,9 +521,7 @@ export default function InvitationCreateForm() {
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <button
           type="button"
-          onClick={() =>
-            router.push("/dashboard/undangan")
-          }
+          onClick={() => router.push("/dashboard/invitations")}
           className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
         >
           Batal
