@@ -14,11 +14,13 @@ type WishItem = { _id?: string; guestName: string; message: string; createdAt?: 
 type Invitation = {
   groom: Couple; bride: Couple; template: string; eventDate?: string | null;
   quranSurah?: string; quranVerse?: string; quranText?: string; closingText?: string;
+  backgroundType?: "color" | "gradient" | "image"; backgroundColor?: string; backgroundGradient?: string; backgroundImage?: string;
+  rsvpEnabled?: boolean; wishesEnabled?: boolean;
 };
 
 export function PublicInvitation({ slug, invitation, guestName, events, gallery, gifts, music, stories, initialWishes, totalWishes }: {
   slug: string; invitation: Invitation; guestName: string; events: EventItem[]; gallery: GalleryItem[];
-  gifts: GiftItem[]; music: { title: string; audioUrl: string } | null; stories: StoryItem[];
+  gifts: GiftItem[]; music: { title: string; artist?: string; audioUrl: string } | null; stories: StoryItem[];
   initialWishes: WishItem[]; totalWishes: number;
 }) {
   const [opened, setOpened] = useState(false);
@@ -26,10 +28,17 @@ export function PublicInvitation({ slug, invitation, guestName, events, gallery,
   const [wishes, setWishes] = useState(initialWishes);
   const [wishOffset, setWishOffset] = useState(initialWishes.length);
   const [hasMoreWishes, setHasMoreWishes] = useState(initialWishes.length < totalWishes);
+  const [wishLoading, setWishLoading] = useState(false);
+  const [wishError, setWishError] = useState("");
   const groom = invitation.groom;
   const bride = invitation.bride;
   const targetDate = invitation.eventDate || events[0]?.date || null;
   const eventHeroImage = gallery[0]?.imageUrl || groom.photo || bride.photo;
+  const backgroundStyle = invitation.backgroundType === "image" && invitation.backgroundImage
+    ? { backgroundImage: `linear-gradient(180deg,rgba(248,248,244,.88),rgba(248,248,244,.94)),url("${safeCssUrl(invitation.backgroundImage)}")`, backgroundSize: "cover", backgroundPosition: "center" }
+    : invitation.backgroundType === "gradient" && invitation.backgroundGradient
+      ? { backgroundImage: invitation.backgroundGradient }
+      : { backgroundColor: invitation.backgroundColor || "#f8f8f4" };
 
   useEffect(() => {
     if (activePhoto === null) return;
@@ -63,12 +72,21 @@ export function PublicInvitation({ slug, invitation, guestName, events, gallery,
   }, [opened, events.length, gallery.length, gifts.length, stories.length]);
 
   async function loadMoreWishes() {
-    const response = await fetch(`/api/public/${encodeURIComponent(slug)}/wishes?skip=${wishOffset}`, { cache: "no-store" });
-    if (!response.ok) return;
-    const result = await response.json() as { data: WishItem[]; total: number };
-    setWishes((current) => [...current, ...result.data]);
-    setWishOffset((current) => current + result.data.length);
-    setHasMoreWishes(wishOffset + result.data.length < result.total);
+    setWishLoading(true);
+    setWishError("");
+    try {
+      const response = await fetch(`/api/public/${encodeURIComponent(slug)}/wishes?skip=${wishOffset}`, { cache: "no-store" });
+      const result = await response.json() as { data?: WishItem[]; total?: number; error?: string };
+      if (!response.ok) throw new Error(result.error || "Ucapan belum dapat dimuat.");
+      const next = result.data ?? [];
+      setWishes((current) => [...current, ...next]);
+      setWishOffset((current) => current + next.length);
+      setHasMoreWishes(wishOffset + next.length < (result.total ?? 0));
+    } catch (error) {
+      setWishError(error instanceof Error ? error.message : "Ucapan belum dapat dimuat.");
+    } finally {
+      setWishLoading(false);
+    }
   }
 
   function openInvitation() {
@@ -77,7 +95,7 @@ export function PublicInvitation({ slug, invitation, guestName, events, gallery,
     window.setTimeout(() => document.getElementById("invitation-content")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
   }
 
-  return <main className={`invitation invitation-${invitation.template}`}>
+  return <main className={`invitation invitation-${invitation.template}`} style={backgroundStyle}>
     <section id="home" className={`inv-cover ${opened ? "inv-cover-open" : ""}`} style={eventHeroImage ? { backgroundImage: `linear-gradient(180deg,rgba(24,32,26,.24),rgba(24,32,26,.62)),url("${safeCssUrl(eventHeroImage)}")` } : undefined}>
       <div className="inv-cover-grain" />
       <div className="inv-cover-content">
@@ -110,9 +128,9 @@ export function PublicInvitation({ slug, invitation, guestName, events, gallery,
 
       {gifts.length > 0 && <section className="inv-gifts section-pad inv-reveal"><div className="inv-section-title"><p className="inv-kicker">TANDA KASIH</p><h2>Wedding Gift</h2><p className="inv-muted">Doa restu Anda adalah hadiah terindah. Jika ingin berbagi tanda kasih, kami menerimanya dengan penuh syukur.</p></div><div className="inv-gift-grid">{gifts.map((gift) => <GiftCard gift={gift} key={gift._id}/>)}</div></section>}
 
-      <section className="inv-rsvp section-pad inv-reveal"><div className="inv-section-title"><p className="inv-kicker">KEHADIRAN ANDA BERARTI</p><h2>Konfirmasi Kehadiran</h2><p className="inv-muted">Mohon konfirmasi kehadiran Anda melalui formulir berikut.</p></div><GuestForm slug={slug} kind="rsvp" guestName={guestName}/></section>
+      {invitation.rsvpEnabled !== false && <section className="inv-rsvp section-pad inv-reveal"><div className="inv-section-title"><p className="inv-kicker">KEHADIRAN ANDA BERARTI</p><h2>Konfirmasi Kehadiran</h2><p className="inv-muted">Mohon konfirmasi kehadiran Anda melalui formulir berikut.</p></div><GuestForm slug={slug} kind="rsvp" guestName={guestName}/></section>}
 
-      <section className="inv-wishes section-pad inv-reveal"><div className="inv-section-title"><p className="inv-kicker">DOA BAIK UNTUK KAMI</p><h2>Ucapan & Doa</h2></div><div className="inv-wish-layout"><GuestForm slug={slug} kind="wishes" guestName={guestName} onWish={(wish) => { setWishes((current) => [wish, ...current]); setWishOffset((current) => current + 1); }}/><div className="inv-wish-list" aria-live="polite">{wishes.length ? wishes.map((wish, index) => <article className="inv-wish-card" key={wish._id || `${wish.guestName}-${index}`}><div className="inv-wish-top"><strong>{wish.guestName}</strong><span>{wish.createdAt ? relativeTime(wish.createdAt) : "Baru saja"}</span></div><p>{wish.message}</p></article>) : <p className="inv-empty-wish">Jadilah yang pertama mengirim doa.</p>}{hasMoreWishes && <button className="inv-load-more" onClick={loadMoreWishes}>Muat ucapan lainnya</button>}</div></div></section>
+      {invitation.wishesEnabled !== false && <section className="inv-wishes section-pad inv-reveal"><div className="inv-section-title"><p className="inv-kicker">DOA BAIK UNTUK KAMI</p><h2>Ucapan & Doa</h2></div><div className="inv-wish-layout"><GuestForm slug={slug} kind="wishes" guestName={guestName} onWish={(wish) => { setWishes((current) => [wish, ...current]); setWishOffset((current) => current + 1); }}/><div className="inv-wish-list" aria-live="polite">{wishError && <p className="inv-form-status" role="alert">{wishError}</p>}{wishLoading && !wishes.length && <p className="inv-muted">Memuat ucapan…</p>}{wishes.length ? wishes.map((wish, index) => <article className="inv-wish-card" key={wish._id || `${wish.guestName}-${index}`}><div className="inv-wish-top"><strong>{wish.guestName}</strong><span>{wish.createdAt ? relativeTime(wish.createdAt) : "Baru saja"}</span></div><p>{wish.message}</p></article>) : !wishLoading && <p className="inv-empty-wish">Jadilah yang pertama mengirim doa.</p>}{hasMoreWishes && <button className="inv-load-more" disabled={wishLoading} onClick={() => void loadMoreWishes}>{wishLoading ? "Memuat…" : "Muat ucapan lainnya"}</button>}</div></div></section>}
 
       <footer className="inv-closing inv-reveal" style={eventHeroImage ? { backgroundImage: `linear-gradient(180deg,rgba(32,42,34,.78),rgba(32,42,34,.76)),url("${safeCssUrl(eventHeroImage)}")` } : undefined}><span className="inv-closing-flower">✳</span><p>{invitation.closingText || "Merupakan suatu kehormatan dan kebahagiaan bagi kami apabila Bapak/Ibu/Saudara/i berkenan hadir dan memberikan doa restu."}</p><p className="inv-closing-salam">Wassalamu’alaikum Warahmatullahi Wabarakatuh</p>{eventHeroImage ? <div className="inv-closing-portrait"><Image src={eventHeroImage} width={188} height={188} sizes="94px" alt={`${groom.name} dan ${bride.name}`} loading="lazy"/></div> : null}<h2>{groom.name} <i>&</i> {bride.name}</h2><small>WITH LOVE, ALWAYS</small></footer>
     </div>
@@ -158,7 +176,7 @@ function GiftCard({ gift }: { gift: GiftItem }) {
   return <article className="inv-gift-card"><span className="inv-gift-type">{gift.type === "qris" ? "QRIS" : gift.type === "ewallet" ? "E-WALLET" : "REKENING BANK"}</span><h3>{gift.provider}</h3>{gift.qrImage && <a className="inv-qr-link" href={gift.qrImage} target="_blank" rel="noreferrer"><Image src={gift.qrImage} width={284} height={284} sizes="142px" alt={`QR ${gift.provider}`} loading="lazy"/><span>Ketuk untuk memperbesar</span></a>}{gift.accountNumber && <><strong className="inv-account-number">{gift.accountNumber}</strong><span className="inv-account-name">a.n. {gift.accountName}</span><button className="inv-copy-button" onClick={copyNumber}>{copied ? <Check size={15}/> : <Copy size={15}/>} {copied ? "Nomor rekening berhasil disalin" : "Salin rekening"}</button></>}</article>;
 }
 
-function MusicToggle({ music }: { music: { title: string; audioUrl: string } }) {
+function MusicToggle({ music }: { music: { title: string; artist?: string; audioUrl: string } }) {
   const audio = useRef<HTMLAudioElement>(null);
   const userPaused = useRef(false);
   const [playing, setPlaying] = useState(false);
@@ -172,7 +190,8 @@ function MusicToggle({ music }: { music: { title: string; audioUrl: string } }) 
     if (element.paused) { try { await element.play(); userPaused.current = false; setPlaying(true); } catch { setPlaying(false); } }
     else { userPaused.current = true; element.pause(); setPlaying(false); }
   }, []);
-  return <><audio ref={audio} src={music.audioUrl} loop preload="none" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}/><button className={`inv-music-toggle ${playing ? "is-playing" : ""}`} onClick={toggle} aria-label={playing ? `Jeda musik ${music.title}` : `Putar musik ${music.title}`} title={music.title}>{playing ? <Pause size={18}/> : <Play size={18}/>}<Music2 size={13}/></button></>;
+  const label = music.artist ? `${music.title} — ${music.artist}` : music.title;
+  return <><audio ref={audio} src={music.audioUrl} loop preload="none" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}/><button className={`inv-music-toggle ${playing ? "is-playing" : ""}`} onClick={toggle} aria-label={playing ? `Jeda musik ${label}` : `Putar musik ${label}`} title={label}>{playing ? <Pause size={18}/> : <Play size={18}/>}<Music2 size={13}/></button></>;
 }
 
 function GuestForm({ slug, kind, guestName, onWish }: { slug: string; kind: "rsvp" | "wishes"; guestName: string; onWish?: (wish: WishItem) => void }) {

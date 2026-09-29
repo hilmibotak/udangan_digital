@@ -14,10 +14,17 @@ const invitationSchema = new Schema({
   quranVerse: { type: String, default: "" },
   quranText: { type: String, default: "" },
   closingText: { type: String, default: "" },
+  backgroundType: { type: String, enum: ["color", "gradient", "image"], default: "color" },
+  backgroundColor: { type: String, default: "#f8f8f4", trim: true, maxlength: 20 },
+  backgroundGradient: { type: String, default: "", trim: true, maxlength: 300 },
+  backgroundImage: { type: String, default: "", trim: true, maxlength: 2000 },
+  backgroundImagePublicId: { type: String, default: "", trim: true, maxlength: 255 },
+  rsvpEnabled: { type: Boolean, default: true },
+  wishesEnabled: { type: Boolean, default: true },
 }, { timestamps: true });
 
 // Recompile the model during Next.js HMR after adding fields to the schema.
-if (mongoose.models.Invitation && (!mongoose.models.Invitation.schema.path("title") || !mongoose.models.Invitation.schema.path("groom.photoPublicId"))) {
+if (mongoose.models.Invitation && (!mongoose.models.Invitation.schema.path("title") || !mongoose.models.Invitation.schema.path("groom.photoPublicId") || !mongoose.models.Invitation.schema.path("backgroundType") || !mongoose.models.Invitation.schema.path("rsvpEnabled") || !mongoose.models.Invitation.schema.path("wishesEnabled"))) {
   delete mongoose.models.Invitation;
 }
 const Invitation = mongoose.models.Invitation ?? mongoose.model("Invitation", invitationSchema);

@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       quranVerse,
       quranText,
 
-      closingText,
+      closingText, backgroundType, backgroundColor, backgroundGradient, backgroundImage, backgroundImagePublicId, rsvpEnabled, wishesEnabled,
     } = body;
 
     if (!title?.trim()) {
@@ -173,6 +173,13 @@ export async function POST(request: Request) {
       quranText: quranText?.trim() || "",
 
       closingText: closingText?.trim() || "",
+      backgroundType: ["color", "gradient", "image"].includes(backgroundType) ? backgroundType : "color",
+      backgroundColor: /^#[0-9a-fA-F]{6}$/.test(backgroundColor || "") ? backgroundColor : "#f8f8f4",
+      backgroundGradient: backgroundGradient?.trim() || "",
+      backgroundImage: backgroundImage?.trim() || "",
+      backgroundImagePublicId: backgroundImagePublicId?.trim() || "",
+      rsvpEnabled: rsvpEnabled !== false,
+      wishesEnabled: wishesEnabled !== false,
     });
 
     return NextResponse.json(

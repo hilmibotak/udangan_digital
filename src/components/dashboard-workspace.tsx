@@ -16,7 +16,7 @@ const config: Record<string, { title: string; api: string; fields: Field[]; read
   ] },
   gallery: { title: "Galeri Foto", api: "/api/gallery", fields: [{ key: "imageUrl", label: "Foto", type: "file", media: "image", required: true }, { key: "caption", label: "Keterangan" }, { key: "sortOrder", label: "Urutan", type: "number" }] },
   "love-story": { title: "Love Story", api: "/api/love-stories", fields: [{ key: "year", label: "Tahun", type: "number", required: true }, { key: "title", label: "Judul", required: true }, { key: "description", label: "Cerita", type: "textarea", required: true }, { key: "imageUrl", label: "Foto", type: "file", media: "image" }, { key: "sortOrder", label: "Urutan", type: "number" }] },
-  music: { title: "Musik Undangan", api: "/api/music", fields: [{ key: "title", label: "Judul lagu", required: true }, { key: "audioUrl", label: "File MP3 / WAV", type: "file", media: "audio", required: true }, { key: "enabled", label: "Aktif di undangan", type: "select", options: [["true", "Aktif"], ["false", "Nonaktif"]] }] },
+  music: { title: "Musik Undangan", api: "/api/music", fields: [{ key: "title", label: "Judul lagu", required: true }, { key: "artist", label: "Artis", type: "text" }, { key: "audioUrl", label: "URL musik (HTTPS)", type: "url" }, { key: "audioFile", label: "Atau upload MP3 / WAV", type: "file", media: "audio" }, { key: "enabled", label: "Aktif di undangan", type: "select", options: [["true", "Aktif"], ["false", "Nonaktif"]] }] },
   gifts: { title: "Hadiah Digital", api: "/api/gifts", fields: [{ key: "type", label: "Jenis", type: "select", required: true, options: [["bank", "Bank"], ["ewallet", "E-wallet"], ["qris", "QRIS"]] }, { key: "provider", label: "Bank / penyedia", required: true }, { key: "accountNumber", label: "Nomor rekening / akun" }, { key: "accountName", label: "Nama pemilik" }, { key: "qrImage", label: "Gambar QRIS", type: "file", media: "image" }] },
   guests: { title: "Daftar Tamu", api: "/api/guests", fields: [{ key: "name", label: "Nama tamu", required: true }, { key: "phone", label: "Nomor WhatsApp" }, { key: "category", label: "Kategori" }, { key: "invitationStatus", label: "Undangan", type: "select", options: [["pending", "Belum dikirim"], ["sent", "Terkirim"]] }, { key: "rsvpStatus", label: "Kehadiran", type: "select", options: [["pending", "Belum konfirmasi"], ["attending", "Hadir"], ["not_attending", "Tidak hadir"], ["maybe", "Belum pasti"]] }] },
   rsvp: { title: "Konfirmasi RSVP", api: "/api/rsvp", readOnly: true, fields: [] },
@@ -59,8 +59,8 @@ export function DashboardWorkspace({ section, invitations }: { section: string; 
           if (file instanceof File && file.size > 0) {
             const upload = new FormData(); upload.set("invitationId", invitationId); upload.set("file", file);
             const uploaded = await fetch(`/api/upload/${field.media}`, { method: "POST", body: upload }); const asset = await uploaded.json(); if (!uploaded.ok) throw new Error(asset.error || "Upload gagal. Silakan coba lagi.");
-            payload[field.key] = asset.data.url; payload.publicId = asset.data.publicId;
-          } else if (editing?.[field.key]) { payload[field.key] = String(editing[field.key]); if (editing.publicId) payload.publicId = String(editing.publicId); }
+            payload[field.key === "audioFile" ? "audioUrl" : field.key] = asset.data.url; payload.publicId = asset.data.publicId;
+          } else if (editing?.[field.key === "audioFile" ? "audioUrl" : field.key]) { payload[field.key === "audioFile" ? "audioUrl" : field.key] = String(editing[field.key === "audioFile" ? "audioUrl" : field.key]); if (editing.publicId) payload.publicId = String(editing.publicId); }
           else if (field.required) throw new Error(`Pilih ${field.label.toLowerCase()} terlebih dahulu.`);
           continue;
         }

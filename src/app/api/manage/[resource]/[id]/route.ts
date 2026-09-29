@@ -20,7 +20,7 @@ const mutable: Record<string, string[]> = {
   events: ["type", "title", "date", "startTime", "endTime", "venue", "address", "mapsUrl"],
   gallery: ["imageUrl", "caption", "sortOrder", "publicId"], gifts: ["type", "provider", "accountNumber", "accountName", "qrImage", "publicId"],
   guests: ["name", "phone", "category", "invitationStatus", "rsvpStatus"], "love-stories": ["year", "title", "description", "imageUrl", "publicId", "sortOrder"],
-  music: ["title", "audioUrl", "publicId", "enabled"], rsvp: [], wishes: ["status"],
+  music: ["title", "artist", "audioUrl", "publicId", "enabled"], rsvp: [], wishes: ["status"],
 };
 type Context = { params: Promise<{ resource: string; id: string }> };
 

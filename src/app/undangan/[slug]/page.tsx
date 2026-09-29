@@ -67,13 +67,14 @@ export default async function PublicInvitationPage({ params, searchParams }: { p
     template: item!.template,
     eventDate: serializeDate(item!.eventDate),
     quranSurah: item!.quranSurah ?? "", quranVerse: item!.quranVerse ?? "", quranText: item!.quranText ?? "", closingText: item!.closingText ?? "",
+    backgroundType: item!.backgroundType ?? "color", backgroundColor: item!.backgroundColor ?? "#f8f8f4", backgroundGradient: item!.backgroundGradient ?? "", backgroundImage: item!.backgroundImage ?? "", rsvpEnabled: item!.rsvpEnabled !== false, wishesEnabled: item!.wishesEnabled !== false,
   };
   return <PublicInvitation
     slug={slug} invitation={data} guestName={guestName}
     events={eventRows.map((event) => ({ _id: String(event._id), type: event.type, title: event.title, date: serializeDate(event.date), startTime: event.startTime, endTime: event.endTime, venue: event.venue, address: event.address, mapsUrl: event.mapsUrl }))}
     gallery={galleryRows.map((photo) => ({ _id: String(photo._id), imageUrl: photo.imageUrl, caption: photo.caption }))}
     gifts={giftRows.map((gift) => ({ _id: String(gift._id), type: gift.type, provider: gift.provider, accountNumber: gift.accountNumber, accountName: gift.accountName, qrImage: gift.qrImage }))}
-    music={musicRow ? { title: musicRow.title, audioUrl: musicRow.audioUrl } : null}
+    music={musicRow ? { title: musicRow.title, artist: musicRow.artist ?? "", audioUrl: musicRow.audioUrl } : null}
     stories={storyRows.map((story) => ({ _id: String(story._id), year: story.year, title: story.title, description: story.description, imageUrl: story.imageUrl }))}
     initialWishes={wishRows.map((wish) => ({ _id: String(wish._id), guestName: wish.guestName, message: wish.message, createdAt: serializeDate(wish.createdAt) }))}
     totalWishes={wishTotal}

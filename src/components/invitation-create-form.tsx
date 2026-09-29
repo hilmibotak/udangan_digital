@@ -1,4 +1,5 @@
 "use client";
+/* eslint @next/next/no-img-element: off -- local object URLs are used for immediate upload previews. */
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -87,6 +88,27 @@ export default function InvitationCreateForm() {
   const [quranText, setQuranText] = useState("");
 
   const [closingText, setClosingText] = useState("");
+  const [backgroundType, setBackgroundType] = useState<"color" | "gradient" | "image">("color");
+  const [backgroundColor, setBackgroundColor] = useState("#f8f8f4");
+  const [backgroundGradient, setBackgroundGradient] = useState("");
+  const [backgroundFile, setBackgroundFile] = useState<File | null>(null);
+  const [backgroundPreview, setBackgroundPreview] = useState("");
+  const [rsvpEnabled, setRsvpEnabled] = useState(true);
+  const [wishesEnabled, setWishesEnabled] = useState(true);
+  const [musicTitle, setMusicTitle] = useState("");
+  const [musicArtist, setMusicArtist] = useState("");
+  const [musicUrl, setMusicUrl] = useState("");
+  const [musicFile, setMusicFile] = useState<File | null>(null);
+  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [storyYear, setStoryYear] = useState(new Date().getFullYear().toString());
+  const [storyTitle, setStoryTitle] = useState("");
+  const [storyDescription, setStoryDescription] = useState("");
+  const [storyFile, setStoryFile] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const [giftType, setGiftType] = useState<"bank" | "ewallet">("bank");
+  const [giftProvider, setGiftProvider] = useState("");
+  const [giftNumber, setGiftNumber] = useState("");
+  const [giftName, setGiftName] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -173,7 +195,8 @@ export default function InvitationCreateForm() {
           quranVerse,
           quranText,
 
-          closingText,
+          closingText, backgroundType, backgroundColor, backgroundGradient,
+          rsvpEnabled, wishesEnabled,
         }),
       });
 
@@ -194,6 +217,40 @@ export default function InvitationCreateForm() {
         );
       }
 
+      const upload = async (kind: "image" | "audio", file: File) => {
+        const form = new FormData();
+        form.set("invitationId", invitationId);
+        form.set("file", file);
+        const response = await fetch(`/api/upload/${kind}`, { method: "POST", body: form });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Upload gagal.");
+        return result.data as { url: string; publicId: string };
+      };
+      const post = async (endpoint: string, body: Record<string, unknown>) => {
+        const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ invitationId, ...body }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || result.message || "Data gagal disimpan.");
+        return result;
+      };
+      let backgroundData: { url: string; publicId: string } | null = null;
+      if (backgroundFile) backgroundData = await upload("image", backgroundFile);
+      if (backgroundData) {
+        const response = await fetch(`/api/invitations/${invitationId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ backgroundImage: backgroundData.url, backgroundImagePublicId: backgroundData.publicId, backgroundType: "image" }) });
+        if (!response.ok) throw new Error("Background gagal disimpan.");
+      }
+      if (musicTitle.trim() && (musicUrl.trim() || musicFile)) {
+        const audio = musicFile ? await upload("audio", musicFile) : null;
+        await post("/api/music", { title: musicTitle, artist: musicArtist, audioUrl: audio?.url || musicUrl, publicId: audio?.publicId || "", enabled: musicEnabled });
+      }
+      if (storyTitle.trim() && storyDescription.trim()) {
+        const image = storyFile ? await upload("image", storyFile) : null;
+        await post("/api/love-stories", { year: storyYear, title: storyTitle, description: storyDescription, imageUrl: image?.url || "", publicId: image?.publicId || "", sortOrder: 0 });
+      }
+      for (const [index, file] of galleryFiles.entries()) {
+        const image = await upload("image", file);
+        await post("/api/gallery", { imageUrl: image.url, publicId: image.publicId, caption: "", sortOrder: index });
+      }
+      if (giftProvider.trim()) await post("/api/gifts", { type: giftType, provider: giftProvider, accountNumber: giftNumber, accountName: giftName });
       router.push(`/dashboard/invitations/${invitationId}`);
 
       router.refresh();
@@ -508,6 +565,65 @@ export default function InvitationCreateForm() {
           placeholder="Merupakan suatu kebahagiaan bagi kami apabila Bapak/Ibu/Saudara/i berkenan hadir..."
           className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
         />
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Background</h2>
+        <p className="mt-1 text-sm text-slate-500">Pilih warna, gradient, atau foto background undangan.</p>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <label className="text-sm font-medium text-slate-700">Jenis background<select value={backgroundType} onChange={(e) => setBackgroundType(e.target.value as typeof backgroundType)} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"><option value="color">Color</option><option value="gradient">Gradient</option><option value="image">Image</option></select></label>
+          <label className="text-sm font-medium text-slate-700">Warna<input type="color" value={backgroundColor} onChange={(e) => setBackgroundColor(e.target.value)} className="mt-2 h-12 w-full rounded-xl border border-slate-300 p-1" /></label>
+          <label className="text-sm font-medium text-slate-700 md:col-span-2">CSS Gradient<input value={backgroundGradient} onChange={(e) => setBackgroundGradient(e.target.value)} placeholder="linear-gradient(135deg, #f8f8f4, #dce8df)" className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" /></label>
+          {backgroundType === "image" && <label className="text-sm font-medium text-slate-700 md:col-span-2">Upload foto<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const file = e.target.files?.[0] || null; setBackgroundFile(file); setBackgroundPreview(file ? URL.createObjectURL(file) : ""); }} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" />{backgroundPreview && <img src={backgroundPreview} alt="Preview background" className="mt-3 h-36 w-full rounded-xl object-cover" />}</label>}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Musik</h2>
+        <p className="mt-1 text-sm text-slate-500">Musik aktif akan tampil sebagai player di undangan publik.</p>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <input value={musicTitle} onChange={(e) => setMusicTitle(e.target.value)} placeholder="Judul lagu" className="rounded-xl border border-slate-300 px-4 py-3 text-sm" />
+          <input value={musicArtist} onChange={(e) => setMusicArtist(e.target.value)} placeholder="Artis" className="rounded-xl border border-slate-300 px-4 py-3 text-sm" />
+          <input type="url" value={musicUrl} onChange={(e) => setMusicUrl(e.target.value)} placeholder="https://... (URL HTTPS)" className="rounded-xl border border-slate-300 px-4 py-3 text-sm md:col-span-2" />
+          <label className="text-sm font-medium text-slate-700 md:col-span-2">Atau upload MP3/WAV<input type="file" accept="audio/mpeg,audio/wav" onChange={(e) => setMusicFile(e.target.files?.[0] || null)} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" /></label>
+          <label className="flex items-center gap-3 text-sm text-slate-700 md:col-span-2"><input type="checkbox" checked={musicEnabled} onChange={(e) => setMusicEnabled(e.target.checked)} /> Aktifkan musik</label>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Love Story</h2>
+        <p className="mt-1 text-sm text-slate-500">Tambahkan perjalanan hubungan pertama kamu.</p>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <input type="number" value={storyYear} onChange={(e) => setStoryYear(e.target.value)} placeholder="Tahun" className="rounded-xl border border-slate-300 px-4 py-3 text-sm" />
+          <input value={storyTitle} onChange={(e) => setStoryTitle(e.target.value)} placeholder="Judul cerita" className="rounded-xl border border-slate-300 px-4 py-3 text-sm" />
+          <textarea value={storyDescription} onChange={(e) => setStoryDescription(e.target.value)} placeholder="Ceritakan momen penting..." className="min-h-28 rounded-xl border border-slate-300 px-4 py-3 text-sm md:col-span-2" />
+          <label className="text-sm font-medium text-slate-700 md:col-span-2">Foto cerita (opsional)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setStoryFile(e.target.files?.[0] || null)} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" /></label>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Gallery</h2>
+        <p className="mt-1 text-sm text-slate-500">Upload satu atau beberapa foto gallery.</p>
+        <input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(e) => setGalleryFiles(Array.from(e.target.files || []))} className="mt-5 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" />
+        {!!galleryFiles.length && <p className="mt-2 text-xs text-slate-500">{galleryFiles.length} foto siap diupload.</p>}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Hadiah Digital</h2>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <select value={giftType} onChange={(e) => setGiftType(e.target.value as typeof giftType)} className="rounded-xl border border-slate-300 px-4 py-3 text-sm"><option value="bank">Bank</option><option value="ewallet">E-Wallet</option></select>
+          <input value={giftProvider} onChange={(e) => setGiftProvider(e.target.value)} placeholder="Nama bank / e-wallet" className="rounded-xl border border-slate-300 px-4 py-3 text-sm" />
+          <input value={giftNumber} onChange={(e) => setGiftNumber(e.target.value)} placeholder="Nomor rekening / akun" className="rounded-xl border border-slate-300 px-4 py-3 text-sm" />
+          <input value={giftName} onChange={(e) => setGiftName(e.target.value)} placeholder="Nama pemilik" className="rounded-xl border border-slate-300 px-4 py-3 text-sm" />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Fitur Undangan</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="flex items-center gap-3 text-sm text-slate-700"><input type="checkbox" checked={rsvpEnabled} onChange={(e) => setRsvpEnabled(e.target.checked)} /> Aktifkan Konfirmasi Kehadiran</label>
+          <label className="flex items-center gap-3 text-sm text-slate-700"><input type="checkbox" checked={wishesEnabled} onChange={(e) => setWishesEnabled(e.target.checked)} /> Aktifkan Ucapan & Doa</label>
+        </div>
       </section>
 
       {/* ERROR */}

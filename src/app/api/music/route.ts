@@ -1,7 +1,7 @@
 import { z } from "zod";
 import Music from "@/models/Music";
 import { apiFailure, apiSuccess, findOwnedInvitation } from "@/lib/owned-invitation";
-import { cloudinaryUrl } from "@/lib/validation";
-const schema = z.object({ invitationId: z.string(), title: z.string().trim().min(1).max(160), audioUrl: cloudinaryUrl, publicId: z.string().trim().max(255).default(""), enabled: z.boolean().default(true) }).strict();
+import { cloudinaryUrl, httpsUrl } from "@/lib/validation";
+const schema = z.object({ invitationId: z.string(), title: z.string().trim().min(1).max(160), artist: z.string().trim().max(160).default(""), audioUrl: z.union([cloudinaryUrl, httpsUrl]), publicId: z.string().trim().max(255).default(""), enabled: z.boolean().default(true) }).strict();
 export async function GET(request: Request) { try { const id = new URL(request.url).searchParams.get("invitationId") ?? ""; const owned = await findOwnedInvitation(id); if ("response" in owned) return owned.response; return apiSuccess(await Music.findOne({ invitationId: owned.invitationId }).lean()); } catch { return apiFailure("Musik belum dapat dimuat."); } }
 export async function POST(request: Request) { const input = schema.safeParse(await request.json().catch(() => null)); if (!input.success) return apiFailure("Data musik tidak valid.", 400); try { const owned = await findOwnedInvitation(input.data.invitationId); if ("response" in owned) return owned.response; return apiSuccess(await Music.findOneAndUpdate({ invitationId: owned.invitationId }, { ...input.data, invitationId: owned.invitationId }, { upsert: true, new: true, runValidators: true }), 201); } catch { return apiFailure("Musik gagal disimpan."); } }
