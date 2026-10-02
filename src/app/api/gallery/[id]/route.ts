@@ -5,11 +5,13 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import Gallery from "@/models/Gallery";
 import Invitation from "@/models/Invitation";
-import { cloudinaryUrl } from "@/lib/validation";
+import { optionalMediaUrl } from "@/lib/validation";
+import { deleteFileFromGridFS, parseGridFSFileId } from "@/lib/gridfs";
 
 const schema = z.object({
-  imageUrl: cloudinaryUrl.optional(),
-  publicId: z.string().trim().min(1).max(255).optional(),
+  imageUrl: optionalMediaUrl.optional(),
+  publicId: z.string().trim().max(255).optional(),
+  fileId: z.string().trim().max(50).optional(),
   caption: z.string().trim().max(240).optional(),
   sortOrder: z.coerce.number().int().min(0).optional(),
 }).strict();
@@ -57,6 +59,8 @@ async function handleWrite(request: Request, params: Promise<{ id: string }>, is
     if (!invitation) return NextResponse.json({ success: false, message: "Akses ditolak." }, { status: 403 });
 
     if (isDelete) {
+      const fileId = parseGridFSFileId(item.fileId);
+      if (fileId) await deleteFileFromGridFS(fileId);
       await item.deleteOne();
       return NextResponse.json({ success: true, data: { deleted: true } });
     }
@@ -83,6 +87,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     if (!item) return NextResponse.json({ success: false, message: "Foto tidak ditemukan." }, { status: 404 });
     const invitation = await Invitation.exists({ _id: item.invitationId, userId: session.user.id });
     if (!invitation) return NextResponse.json({ success: false, message: "Akses ditolak." }, { status: 403 });
+    const fileId = parseGridFSFileId(item.fileId);
+    if (fileId) await deleteFileFromGridFS(fileId);
     await item.deleteOne();
     return NextResponse.json({ success: true, data: { deleted: true } });
   } catch {

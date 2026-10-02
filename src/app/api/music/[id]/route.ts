@@ -5,13 +5,15 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import Invitation from "@/models/Invitation";
 import Music from "@/models/Music";
-import { cloudinaryUrl, httpsUrl } from "@/lib/validation";
+import { optionalMediaUrl } from "@/lib/validation";
 
 const schema = z.object({
   title: z.string().trim().min(1).max(160).optional(),
   artist: z.string().trim().max(160).optional(),
-  audioUrl: z.union([cloudinaryUrl, httpsUrl]).optional(),
+  audioUrl: optionalMediaUrl.optional(),
   publicId: z.string().trim().max(255).optional(),
+  fileId: z.string().trim().max(50).optional(),
+  mimeType: z.string().trim().max(100).optional(),
   enabled: z.boolean().optional(),
 }).strict();
 

@@ -11,7 +11,7 @@ export async function findOwnedInvitation(invitationId: string) {
   await connectDB();
   const invitation = await Invitation.findOne({ _id: invitationId, userId: session.user.id }).select("_id").lean();
   if (!invitation) return { response: NextResponse.json({ success: false, message: "Undangan tidak ditemukan." }, { status: 404 }) } as const;
-  return { invitationId: invitation._id } as const;
+  return { invitationId: invitation._id, userId: session.user.id } as const;
 }
 
 export const apiFailure = (message: string, status = 503) => NextResponse.json({ success: false, message }, { status });

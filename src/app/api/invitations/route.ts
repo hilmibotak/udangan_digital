@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       quranVerse,
       quranText,
 
-      closingText, backgroundType, backgroundColor, backgroundGradient, backgroundImage, backgroundImagePublicId, rsvpEnabled, wishesEnabled,
+      closingText, backgroundType, backgroundColor, backgroundGradient, backgroundImage, backgroundImagePublicId, backgroundFileId, rsvpEnabled, wishesEnabled,
     } = body;
 
     if (!title?.trim()) {
@@ -153,6 +153,7 @@ export async function POST(request: Request) {
         instagram: groom?.instagram?.trim() || "",
         photo: groom?.photo || "",
         photoPublicId: groom?.photoPublicId || "",
+        photoFileId: groom?.photoFileId || "",
       },
 
       bride: {
@@ -164,6 +165,7 @@ export async function POST(request: Request) {
         instagram: bride?.instagram?.trim() || "",
         photo: bride?.photo || "",
         photoPublicId: bride?.photoPublicId || "",
+        photoFileId: bride?.photoFileId || "",
       },
 
       eventDate: eventDate ? new Date(eventDate) : null,
@@ -178,6 +180,7 @@ export async function POST(request: Request) {
       backgroundGradient: backgroundGradient?.trim() || "",
       backgroundImage: backgroundImage?.trim() || "",
       backgroundImagePublicId: backgroundImagePublicId?.trim() || "",
+      backgroundFileId: backgroundFileId?.trim() || "",
       rsvpEnabled: rsvpEnabled !== false,
       wishesEnabled: wishesEnabled !== false,
     });

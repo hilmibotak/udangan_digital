@@ -7,6 +7,7 @@ const loveStorySchema = new Schema({
   description: { type: String, required: true, trim: true, maxlength: 1000 },
   imageUrl: { type: String, default: "", trim: true, maxlength: 2000 },
   publicId: { type: String, default: "", trim: true, maxlength: 255 },
+  fileId: { type: String, default: "", trim: true, maxlength: 50 },
   sortOrder: { type: Number, default: 0, min: 0 },
 }, { timestamps: true, collection: "love_stories" });
 

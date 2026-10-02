@@ -6,6 +6,8 @@ const musicSchema = new Schema({
   artist: { type: String, default: "", trim: true, maxlength: 160 },
   audioUrl: { type: String, required: true, trim: true, maxlength: 2000 },
   publicId: { type: String, default: "", trim: true, maxlength: 255 },
+  fileId: { type: String, default: "", trim: true, maxlength: 50 },
+  mimeType: { type: String, default: "", trim: true, maxlength: 100 },
   enabled: { type: Boolean, default: true },
 }, { timestamps: true, collection: "music" });
 if (mongoose.models.Music && !mongoose.models.Music.schema.path("artist")) delete mongoose.models.Music;

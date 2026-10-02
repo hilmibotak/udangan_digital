@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 
-const personSchema = new Schema({ name: { type: String, default: "" }, nickname: { type: String, default: "" }, fatherName: { type: String, default: "" }, motherName: { type: String, default: "" }, birthOrder: { type: String, default: "" }, instagram: { type: String, default: "" }, photo: { type: String, default: "" }, photoPublicId: { type: String, default: "" } }, { _id: false });
+const personSchema = new Schema({ name: { type: String, default: "" }, nickname: { type: String, default: "" }, fatherName: { type: String, default: "" }, motherName: { type: String, default: "" }, birthOrder: { type: String, default: "" }, instagram: { type: String, default: "" }, photo: { type: String, default: "" }, photoPublicId: { type: String, default: "" }, photoFileId: { type: String, default: "" } }, { _id: false });
 const invitationSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
   slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -19,12 +19,13 @@ const invitationSchema = new Schema({
   backgroundGradient: { type: String, default: "", trim: true, maxlength: 300 },
   backgroundImage: { type: String, default: "", trim: true, maxlength: 2000 },
   backgroundImagePublicId: { type: String, default: "", trim: true, maxlength: 255 },
+  backgroundFileId: { type: String, default: "", trim: true, maxlength: 50 },
   rsvpEnabled: { type: Boolean, default: true },
   wishesEnabled: { type: Boolean, default: true },
 }, { timestamps: true });
 
 // Recompile the model during Next.js HMR after adding fields to the schema.
-if (mongoose.models.Invitation && (!mongoose.models.Invitation.schema.path("title") || !mongoose.models.Invitation.schema.path("groom.photoPublicId") || !mongoose.models.Invitation.schema.path("backgroundType") || !mongoose.models.Invitation.schema.path("rsvpEnabled") || !mongoose.models.Invitation.schema.path("wishesEnabled"))) {
+if (mongoose.models.Invitation && (!mongoose.models.Invitation.schema.path("title") || !mongoose.models.Invitation.schema.path("groom.photoPublicId") || !mongoose.models.Invitation.schema.path("groom.photoFileId") || !mongoose.models.Invitation.schema.path("backgroundType") || !mongoose.models.Invitation.schema.path("backgroundFileId") || !mongoose.models.Invitation.schema.path("rsvpEnabled") || !mongoose.models.Invitation.schema.path("wishesEnabled"))) {
   delete mongoose.models.Invitation;
 }
 const Invitation = mongoose.models.Invitation ?? mongoose.model("Invitation", invitationSchema);

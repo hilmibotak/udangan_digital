@@ -8,6 +8,7 @@ const giftSchema = new Schema({
   accountName: { type: String, default: "", trim: true, maxlength: 100 },
   qrImage: { type: String, default: "", trim: true, maxlength: 2000 },
   publicId: { type: String, default: "", trim: true, maxlength: 255 },
+  fileId: { type: String, default: "", trim: true, maxlength: 50 },
 }, { timestamps: { createdAt: true, updatedAt: false }, collection: "gifts" });
 const Gift = mongoose.models.Gift ?? mongoose.model("Gift", giftSchema);
 export default Gift;

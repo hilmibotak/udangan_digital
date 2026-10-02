@@ -1,9 +1,9 @@
 import { z } from "zod";
 import LoveStory from "@/models/LoveStory";
 import { apiFailure, apiSuccess, findOwnedInvitation } from "@/lib/owned-invitation";
-import { optionalCloudinaryUrl } from "@/lib/validation";
+import { optionalMediaUrl } from "@/lib/validation";
 
-const schema = z.object({ invitationId: z.string(), year: z.coerce.number().int().min(1900).max(2200), title: z.string().trim().min(1).max(120), description: z.string().trim().min(1).max(1000), imageUrl: optionalCloudinaryUrl.default(""), publicId: z.string().trim().max(255).default(""), sortOrder: z.coerce.number().int().min(0).default(0) }).strict();
+const schema = z.object({ invitationId: z.string(), year: z.coerce.number().int().min(1900).max(2200), title: z.string().trim().min(1).max(120), description: z.string().trim().min(1).max(1000), imageUrl: optionalMediaUrl.default(""), fileId: z.string().trim().max(50).default(""), publicId: z.string().trim().max(255).default(""), sortOrder: z.coerce.number().int().min(0).default(0) }).strict();
 
 export async function GET(request: Request) {
   try {

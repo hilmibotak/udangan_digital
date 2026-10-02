@@ -5,15 +5,16 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import Gift from "@/models/Gift";
 import Invitation from "@/models/Invitation";
-import { optionalCloudinaryUrl } from "@/lib/validation";
+import { optionalMediaUrl } from "@/lib/validation";
 
 const schema = z.object({
   type: z.enum(["bank", "ewallet", "qris"]).optional(),
   provider: z.string().trim().min(1).max(100).optional(),
   accountNumber: z.string().trim().max(100).optional(),
   accountName: z.string().trim().max(100).optional(),
-  qrImage: optionalCloudinaryUrl.optional(),
+  qrImage: optionalMediaUrl.optional(),
   publicId: z.string().trim().max(255).optional(),
+  fileId: z.string().trim().max(50).optional(),
 }).strict();
 
 async function findOwnedGift(id: string, userId: string) {

@@ -5,14 +5,15 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import Invitation from "@/models/Invitation";
 import LoveStory from "@/models/LoveStory";
-import { optionalCloudinaryUrl } from "@/lib/validation";
+import { optionalMediaUrl } from "@/lib/validation";
 
 const schema = z.object({
   year: z.coerce.number().int().min(1900).max(2200).optional(),
   title: z.string().trim().min(1).max(120).optional(),
   description: z.string().trim().min(1).max(1000).optional(),
-  imageUrl: optionalCloudinaryUrl.optional(),
+  imageUrl: optionalMediaUrl.optional(),
   publicId: z.string().trim().max(255).optional(),
+  fileId: z.string().trim().max(50).optional(),
   sortOrder: z.coerce.number().int().min(0).optional(),
 }).strict();
 

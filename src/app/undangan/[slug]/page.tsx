@@ -19,8 +19,8 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
     await connectDB();
     const session = query.preview === "1" ? await auth() : null;
     const filter = query.preview === "1" && session?.user?.id ? { slug, userId: session.user.id } : { slug, status: "published" };
-    const item = await Invitation.findOne(filter).select("groom.name bride.name groom.photo bride.photo").lean();
-    if (item) { const title = `${item.groom.name || "Mempelai"} & ${item.bride.name || "Mempelai"} — Wedding Invitation`; const description = `Undangan pernikahan ${item.groom.name || ""} dan ${item.bride.name || ""}.`; const image = item.groom.photo || item.bride.photo; return { title, description, robots: query.preview === "1" ? { index: false, follow: false } : undefined, openGraph: { title, description, type: "website", ...(image ? { images: [{ url: image, alt: title }] } : {}) } }; }
+    const item = await Invitation.findOne(filter).select("groom.name bride.name groom.photo groom.photoFileId bride.photo bride.photoFileId").lean();
+    if (item) { const title = `${item.groom.name || "Mempelai"} & ${item.bride.name || "Mempelai"} — Wedding Invitation`; const description = `Undangan pernikahan ${item.groom.name || ""} dan ${item.bride.name || ""}.`; const image = item.groom.photoFileId ? `/api/media/${item.groom.photoFileId}` : item.bride.photoFileId ? `/api/media/${item.bride.photoFileId}` : item.groom.photo || item.bride.photo; return { title, description, robots: query.preview === "1" ? { index: false, follow: false } : undefined, openGraph: { title, description, type: "website", ...(image ? { images: [{ url: image, alt: title }] } : {}) } }; }
   } catch { /* Render a friendly unavailable state if the database is temporarily unreachable. */ }
   return { title: "Undangan tidak tersedia" };
 }
@@ -62,21 +62,25 @@ export default async function PublicInvitationPage({ params, searchParams }: { p
   const guestName = typeof toValue === "string" ? toValue.trim().slice(0, 100) : "";
   const serializeDate = (value: Date | string | null | undefined) => value ? new Date(value).toISOString() : "";
   const data = {
-    groom: { name: item!.groom?.name ?? "", nickname: item!.groom?.nickname ?? "", fatherName: item!.groom?.fatherName ?? "", motherName: item!.groom?.motherName ?? "", birthOrder: item!.groom?.birthOrder ?? "", instagram: item!.groom?.instagram ?? "", photo: item!.groom?.photo ?? "" },
-    bride: { name: item!.bride?.name ?? "", nickname: item!.bride?.nickname ?? "", fatherName: item!.bride?.fatherName ?? "", motherName: item!.bride?.motherName ?? "", birthOrder: item!.bride?.birthOrder ?? "", instagram: item!.bride?.instagram ?? "", photo: item!.bride?.photo ?? "" },
+    groom: { name: item!.groom?.name ?? "", nickname: item!.groom?.nickname ?? "", fatherName: item!.groom?.fatherName ?? "", motherName: item!.groom?.motherName ?? "", birthOrder: item!.groom?.birthOrder ?? "", instagram: item!.groom?.instagram ?? "", photo: mediaUrl(item!.groom?.photoFileId, item!.groom?.photo) },
+    bride: { name: item!.bride?.name ?? "", nickname: item!.bride?.nickname ?? "", fatherName: item!.bride?.fatherName ?? "", motherName: item!.bride?.motherName ?? "", birthOrder: item!.bride?.birthOrder ?? "", instagram: item!.bride?.instagram ?? "", photo: mediaUrl(item!.bride?.photoFileId, item!.bride?.photo) },
     template: item!.template,
     eventDate: serializeDate(item!.eventDate),
     quranSurah: item!.quranSurah ?? "", quranVerse: item!.quranVerse ?? "", quranText: item!.quranText ?? "", closingText: item!.closingText ?? "",
-    backgroundType: item!.backgroundType ?? "color", backgroundColor: item!.backgroundColor ?? "#f8f8f4", backgroundGradient: item!.backgroundGradient ?? "", backgroundImage: item!.backgroundImage ?? "", rsvpEnabled: item!.rsvpEnabled !== false, wishesEnabled: item!.wishesEnabled !== false,
+    backgroundType: item!.backgroundType ?? "color", backgroundColor: item!.backgroundColor ?? "#f8f8f4", backgroundGradient: item!.backgroundGradient ?? "", backgroundImage: mediaUrl(item!.backgroundFileId, item!.backgroundImage), rsvpEnabled: item!.rsvpEnabled !== false, wishesEnabled: item!.wishesEnabled !== false,
   };
   return <PublicInvitation
-    slug={slug} invitation={data} guestName={guestName}
+    slug={slug} invitation={data} guestName={guestName} isPreview={query.preview === "1"}
     events={eventRows.map((event) => ({ _id: String(event._id), type: event.type, title: event.title, date: serializeDate(event.date), startTime: event.startTime, endTime: event.endTime, venue: event.venue, address: event.address, mapsUrl: event.mapsUrl }))}
-    gallery={galleryRows.map((photo) => ({ _id: String(photo._id), imageUrl: photo.imageUrl, caption: photo.caption }))}
+    gallery={galleryRows.map((photo) => ({ _id: String(photo._id), imageUrl: mediaUrl(photo.fileId, photo.imageUrl), caption: photo.caption }))}
     gifts={giftRows.map((gift) => ({ _id: String(gift._id), type: gift.type, provider: gift.provider, accountNumber: gift.accountNumber, accountName: gift.accountName, qrImage: gift.qrImage }))}
-    music={musicRow ? { title: musicRow.title, artist: musicRow.artist ?? "", audioUrl: musicRow.audioUrl } : null}
-    stories={storyRows.map((story) => ({ _id: String(story._id), year: story.year, title: story.title, description: story.description, imageUrl: story.imageUrl }))}
+    music={musicRow ? { title: musicRow.title, artist: musicRow.artist ?? "", audioUrl: mediaUrl(musicRow.fileId, musicRow.audioUrl) } : null}
+    stories={storyRows.map((story) => ({ _id: String(story._id), year: story.year, title: story.title, description: story.description, imageUrl: mediaUrl(story.fileId, story.imageUrl) }))}
     initialWishes={wishRows.map((wish) => ({ _id: String(wish._id), guestName: wish.guestName, message: wish.message, createdAt: serializeDate(wish.createdAt) }))}
     totalWishes={wishTotal}
   />;
+}
+
+function mediaUrl(fileId: string | undefined, fallback: string | undefined) {
+  return fileId ? `/api/media/${fileId}` : fallback ?? "";
 }

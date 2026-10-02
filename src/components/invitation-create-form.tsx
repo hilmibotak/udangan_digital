@@ -23,6 +23,7 @@ type PersonForm = {
   motherName: string;
   birthOrder: string;
   instagram: string;
+  photoFileId?: string;
 };
 
 const templates: {
@@ -32,8 +33,8 @@ const templates: {
 }[] = [
   {
     value: "elegant",
-    name: "Elegant",
-    description: "Minimalis, bersih, dan berkelas.",
+    name: "Elegant Botanical Wedding",
+    description: "Ivory, sage, dan aksen champagne yang editorial.",
   },
   {
     value: "romantic",
@@ -82,6 +83,13 @@ export default function InvitationCreateForm() {
     useState<PersonForm>({ ...emptyPerson });
 
   const [eventDate, setEventDate] = useState("");
+  const [eventType, setEventType] = useState<"akad" | "reception" | "other">("akad");
+  const [eventTitle, setEventTitle] = useState("Akad Nikah");
+  const [eventStartTime, setEventStartTime] = useState("");
+  const [eventEndTime, setEventEndTime] = useState("");
+  const [eventVenue, setEventVenue] = useState("");
+  const [eventAddress, setEventAddress] = useState("");
+  const [eventMapsUrl, setEventMapsUrl] = useState("");
 
   const [quranSurah, setQuranSurah] = useState("");
   const [quranVerse, setQuranVerse] = useState("");
@@ -105,6 +113,11 @@ export default function InvitationCreateForm() {
   const [storyDescription, setStoryDescription] = useState("");
   const [storyFile, setStoryFile] = useState<File | null>(null);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+  const [groomPhoto, setGroomPhoto] = useState<File | null>(null);
+  const [bridePhoto, setBridePhoto] = useState<File | null>(null);
+  const [groomPhotoPreview, setGroomPhotoPreview] = useState("");
+  const [bridePhotoPreview, setBridePhotoPreview] = useState("");
   const [giftType, setGiftType] = useState<"bank" | "ewallet">("bank");
   const [giftProvider, setGiftProvider] = useState("");
   const [giftNumber, setGiftNumber] = useState("");
@@ -170,6 +183,19 @@ export default function InvitationCreateForm() {
       setError("Nama mempelai wanita wajib diisi.");
       return;
     }
+    const hasEventDetails = Boolean(eventDate || eventStartTime || eventEndTime || eventVenue || eventAddress || eventMapsUrl);
+    if (hasEventDetails && (!eventDate || !eventStartTime || !eventTitle.trim() || !eventVenue.trim() || !eventAddress.trim())) {
+      setError("Lengkapi tanggal, waktu mulai, nama acara, lokasi, dan alamat acara.");
+      return;
+    }
+    if (galleryFiles.length > 0 && galleryFiles.length < 5) {
+      setError("Gallery minimal 5 foto.");
+      return;
+    }
+    if (galleryFiles.length > 10) {
+      setError("Gallery maksimal 10 foto.");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -224,7 +250,7 @@ export default function InvitationCreateForm() {
         const response = await fetch(`/api/upload/${kind}`, { method: "POST", body: form });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Upload gagal.");
-        return result.data as { url: string; publicId: string };
+        return result.data as { url: string; fileId: string };
       };
       const post = async (endpoint: string, body: Record<string, unknown>) => {
         const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ invitationId, ...body }) });
@@ -232,23 +258,41 @@ export default function InvitationCreateForm() {
         if (!response.ok) throw new Error(result.error || result.message || "Data gagal disimpan.");
         return result;
       };
-      let backgroundData: { url: string; publicId: string } | null = null;
+      for (const [person, file] of [["groom", groomPhoto], ["bride", bridePhoto]] as const) {
+        if (!file) continue;
+        const uploaded = await upload("image", file);
+        const response = await fetch(`/api/invitations/${invitationId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [person]: { ...(person === "groom" ? groom : bride), photo: uploaded.url, photoFileId: uploaded.fileId } }) });
+        if (!response.ok) throw new Error(`Foto ${person === "groom" ? "mempelai pria" : "mempelai wanita"} gagal disimpan.`);
+      }
+      let backgroundData: { url: string; fileId: string } | null = null;
       if (backgroundFile) backgroundData = await upload("image", backgroundFile);
       if (backgroundData) {
-        const response = await fetch(`/api/invitations/${invitationId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ backgroundImage: backgroundData.url, backgroundImagePublicId: backgroundData.publicId, backgroundType: "image" }) });
+        const response = await fetch(`/api/invitations/${invitationId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ backgroundImage: backgroundData.url, backgroundFileId: backgroundData.fileId, backgroundType: "image" }) });
         if (!response.ok) throw new Error("Background gagal disimpan.");
       }
       if (musicTitle.trim() && (musicUrl.trim() || musicFile)) {
         const audio = musicFile ? await upload("audio", musicFile) : null;
-        await post("/api/music", { title: musicTitle, artist: musicArtist, audioUrl: audio?.url || musicUrl, publicId: audio?.publicId || "", enabled: musicEnabled });
+        await post("/api/music", { title: musicTitle, artist: musicArtist, audioUrl: audio?.url || musicUrl, fileId: audio?.fileId || "", enabled: musicEnabled });
       }
       if (storyTitle.trim() && storyDescription.trim()) {
         const image = storyFile ? await upload("image", storyFile) : null;
-        await post("/api/love-stories", { year: storyYear, title: storyTitle, description: storyDescription, imageUrl: image?.url || "", publicId: image?.publicId || "", sortOrder: 0 });
+        await post("/api/love-stories", { year: storyYear, title: storyTitle, description: storyDescription, imageUrl: image?.url || "", fileId: image?.fileId || "", sortOrder: 0 });
+      }
+      if (hasEventDetails) {
+        await post("/api/events", {
+          type: eventType,
+          title: eventTitle.trim(),
+          date: new Date(eventDate).toISOString(),
+          startTime: eventStartTime.trim(),
+          endTime: eventEndTime.trim(),
+          venue: eventVenue.trim(),
+          address: eventAddress.trim(),
+          mapsUrl: eventMapsUrl.trim(),
+        });
       }
       for (const [index, file] of galleryFiles.entries()) {
         const image = await upload("image", file);
-        await post("/api/gallery", { imageUrl: image.url, publicId: image.publicId, caption: "", sortOrder: index });
+        await post("/api/gallery", { imageUrl: image.url, fileId: image.fileId, caption: "", sortOrder: index });
       }
       if (giftProvider.trim()) await post("/api/gifts", { type: giftType, provider: giftProvider, accountNumber: giftNumber, accountName: giftName });
       router.push(`/dashboard/invitations/${invitationId}`);
@@ -298,7 +342,7 @@ export default function InvitationCreateForm() {
               onChange={(e) =>
                 handleTitleChange(e.target.value)
               }
-              placeholder="Pernikahan Hilmi & Aulia"
+              placeholder="Pernikahan Adit & Sarah"
               className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
             />
           </div>
@@ -325,13 +369,13 @@ export default function InvitationCreateForm() {
                       .replace(/[^a-z0-9-]/g, "")
                   )
                 }
-                placeholder="hilmi-aulia"
+                placeholder="Adit-Sarah"
                 className="min-w-0 flex-1 px-3 py-3 text-sm outline-none"
               />
             </div>
 
             <p className="mt-2 text-xs text-slate-400">
-              Contoh: /undangan/hilmi-aulia
+              Contoh: /undangan/adit-sarah
             </p>
           </div>
         </div>
@@ -422,6 +466,8 @@ export default function InvitationCreateForm() {
               person={groom}
               type="groom"
               updatePerson={updatePerson}
+              photoPreview={groomPhotoPreview}
+              onPhotoChange={(file) => { setGroomPhoto(file); setGroomPhotoPreview(file ? URL.createObjectURL(file) : ""); }}
             />
           </div>
 
@@ -441,6 +487,8 @@ export default function InvitationCreateForm() {
               person={bride}
               type="bride"
               updatePerson={updatePerson}
+              photoPreview={bridePhotoPreview}
+              onPhotoChange={(file) => { setBridePhoto(file); setBridePhotoPreview(file ? URL.createObjectURL(file) : ""); }}
             />
           </div>
         </div>
@@ -452,27 +500,51 @@ export default function InvitationCreateForm() {
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5">
           <h2 className="text-lg font-semibold text-slate-900">
-            Waktu Pernikahan
+            Acara & Lokasi Pernikahan
           </h2>
 
           <p className="mt-1 text-sm text-slate-500">
-            Tanggal ini nantinya digunakan untuk countdown.
+            Isi detail acara agar lokasi, alamat, dan tombol Google Maps tampil di undangan publik. Tanggal juga digunakan untuk countdown.
           </p>
         </div>
 
-        <div className="max-w-md">
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Tanggal & Waktu
-          </label>
-
-          <input
-            type="datetime-local"
-            value={eventDate}
-            onChange={(e) =>
-              setEventDate(e.target.value)
-            }
-            className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
-          />
+        <div className="grid gap-5 md:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Jenis acara</label>
+            <select value={eventType} onChange={(e) => setEventType(e.target.value as typeof eventType)} className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900">
+              <option value="akad">Akad nikah</option>
+              <option value="reception">Resepsi</option>
+              <option value="other">Acara lain</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Nama acara</label>
+            <input type="text" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} placeholder="Akad Nikah" className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900" />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Tanggal & waktu</label>
+            <input type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10" />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Waktu mulai</label>
+            <input type="time" value={eventStartTime} onChange={(e) => setEventStartTime(e.target.value)} placeholder="09:00" className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900" />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Waktu selesai (opsional)</label>
+            <input type="time" value={eventEndTime} onChange={(e) => setEventEndTime(e.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900" />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Nama lokasi / venue</label>
+            <input type="text" value={eventVenue} onChange={(e) => setEventVenue(e.target.value)} placeholder="Gedung Graha Pakuan" className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900" />
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-sm font-medium text-slate-700">Alamat lokasi</label>
+            <textarea value={eventAddress} onChange={(e) => setEventAddress(e.target.value)} rows={3} placeholder="Jl. Merdeka No. 123, Bandung" className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900" />
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-sm font-medium text-slate-700">Link Google Maps (opsional)</label>
+            <input type="url" value={eventMapsUrl} onChange={(e) => setEventMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900" />
+          </div>
         </div>
       </section>
 
@@ -604,8 +676,10 @@ export default function InvitationCreateForm() {
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 className="text-lg font-semibold text-slate-900">Gallery</h2>
         <p className="mt-1 text-sm text-slate-500">Upload satu atau beberapa foto gallery.</p>
-        <input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(e) => setGalleryFiles(Array.from(e.target.files || []))} className="mt-5 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" />
-        {!!galleryFiles.length && <p className="mt-2 text-xs text-slate-500">{galleryFiles.length} foto siap diupload.</p>}
+        <p className="mt-1 text-sm text-slate-500">Pilih 5–10 foto. Foto dapat dihapus sebelum disimpan.</p>
+        <input type="file" multiple accept="image/jpeg,image/png,image/webp" disabled={galleryFiles.length >= 10} onChange={(e) => { const added = Array.from(e.target.files || []).slice(0, 10 - galleryFiles.length); setGalleryFiles((current) => [...current, ...added].slice(0, 10)); setGalleryPreviews((current) => [...current, ...added.map((file) => URL.createObjectURL(file))].slice(0, 10)); e.currentTarget.value = ""; }} className="mt-5 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm disabled:opacity-50" />
+        <p className={`mt-2 text-xs ${galleryFiles.length > 0 && galleryFiles.length < 5 ? "text-amber-700" : "text-slate-500"}`}>{galleryFiles.length} / 10 foto{galleryFiles.length > 0 && galleryFiles.length < 5 ? " — Gallery minimal 5 foto." : ""}</p>
+        {!!galleryFiles.length && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">{galleryFiles.map((file, index) => <div key={`${file.name}-${index}`} className="relative"><img src={galleryPreviews[index]} alt={`Preview gallery ${index + 1}`} className="aspect-square w-full rounded-xl object-cover" /><button type="button" onClick={() => { URL.revokeObjectURL(galleryPreviews[index]); setGalleryFiles((current) => current.filter((_, itemIndex) => itemIndex !== index)); setGalleryPreviews((current) => current.filter((_, itemIndex) => itemIndex !== index)); }} className="absolute right-1 top-1 rounded-full bg-white px-2 py-1 text-xs text-red-700 shadow">Hapus</button></div>)}</div>}
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -669,6 +743,8 @@ function PersonFields({
   person,
   type,
   updatePerson,
+  photoPreview,
+  onPhotoChange,
 }: {
   person: PersonForm;
   type: "groom" | "bride";
@@ -677,9 +753,15 @@ function PersonFields({
     field: keyof PersonForm,
     value: string
   ) => void;
+  photoPreview: string;
+  onPhotoChange: (file: File | null) => void;
 }) {
   return (
     <div className="space-y-4">
+      <label className="block text-sm font-medium text-slate-700">Foto Mempelai
+        <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => onPhotoChange(event.target.files?.[0] ?? null)} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" />
+        {photoPreview && <img src={photoPreview} alt={`Preview foto ${type === "groom" ? "mempelai pria" : "mempelai wanita"}`} className="mt-3 h-40 w-32 rounded-xl object-cover" />}
+      </label>
 
       <div>
         <label className="mb-2 block text-sm font-medium text-slate-700">
