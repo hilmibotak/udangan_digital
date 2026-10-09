@@ -138,7 +138,7 @@ export function PublicInvitation({ slug, invitation, guestName, isPreview, event
         <span className="inv-flower" aria-hidden="true">✳</span>
         <h1><span>{groom.name || "Mempelai pria"}</span><i>&</i><span>{bride.name || "Mempelai wanita"}</span></h1>
         {targetDate && <p className="inv-date-line">{formatDate(targetDate, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>}
-        <div className="inv-address"><span>Kepada Yth.</span><strong>{guestName || "Bapak/Ibu/Saudara/i"}</strong><small>Mohon maaf apabila terdapat kesalahan dalam penulisan nama atau gelar.</small></div>
+        <div className="inv-address"><span>Kepada Yth.</span><strong>{guestName || "Bapak/Ibu/Saudara/i"}</strong><small>Dengan hormat, kami mengundang Anda untuk hadir dan berbagi kebahagiaan bersama kami.</small><small>Mohon maaf apabila terdapat kesalahan dalam penulisan nama atau gelar.</small></div>
         <button className="inv-open-button" onClick={openInvitation}>Buka Undangan <ArrowDown size={15}/></button>
         <div className="inv-share-actions"><button className="inv-share-button" onClick={() => void shareInvitation()}><Share2 size={14}/> Bagikan Undangan</button><button className="inv-share-whatsapp" onClick={shareWhatsapp}>WhatsApp</button></div>
       </div>
@@ -163,7 +163,7 @@ export function PublicInvitation({ slug, invitation, guestName, isPreview, event
 
       {events.length > 0 && <section id="event" className="inv-events section-pad inv-reveal"><div className="inv-section-title"><p className="inv-kicker">CATAT TANGGALNYA</p><h2>Acara Pernikahan</h2></div><div className="inv-event-grid">{events.map((event) => <EventCard event={event} key={event._id}/>)}</div></section>}
 
-      {gallery.length > 0 && <section className="inv-gallery section-pad inv-reveal"><div className="inv-section-title"><p className="inv-kicker">FRAGMEN KISAH KAMI</p><h2>Gallery</h2><p className="inv-muted">Sebuah cerita, dalam potongan kenangan.</p></div><div className="inv-gallery-grid">{gallery.map((photo, index) => <button className={`inv-gallery-photo inv-gallery-photo-${index % 5}`} key={photo._id} onClick={() => setActivePhoto(index)} aria-label={`Lihat foto ${index + 1}`}><img src={photo.imageUrl} width={640} height={640} alt={photo.caption || `Momen ${index + 1}`} loading="lazy"/>{photo.caption && <span>{photo.caption}</span>}</button>)}</div></section>}
+      {gallery.length > 0 && <section className="inv-gallery section-pad inv-reveal"><div className="inv-section-title"><p className="inv-kicker">FRAGMEN KISAH KAMI</p><h2>Gallery</h2><p className="inv-muted">Sebuah cerita, dalam potongan kenangan.</p></div><div className="inv-gallery-grid">{gallery.map((photo, index) => <button className="inv-gallery-photo" key={photo._id} onClick={() => setActivePhoto(index)} aria-label={`Lihat foto ${index + 1}`}><img src={photo.imageUrl} alt={photo.caption || `Momen ${index + 1}`} loading="lazy"/>{photo.caption && <span>{photo.caption}</span>}</button>)}</div></section>}
 
       {gifts.length > 0 && <section className="inv-gifts section-pad inv-reveal"><div className="inv-section-title"><p className="inv-kicker">TANDA KASIH</p><h2>Wedding Gift</h2><p className="inv-muted">Doa restu Anda adalah hadiah terindah. Jika ingin berbagi tanda kasih, kami menerimanya dengan penuh syukur.</p></div><div className="inv-gift-grid">{gifts.map((gift) => <GiftCard gift={gift} key={gift._id}/>)}</div></section>}
 
@@ -217,7 +217,7 @@ function PersonCard({ person, label, gender }: { person: Couple; label: string; 
 
 function EventCard({ event }: { event: EventItem }) {
   const mapUrl = safeMapUrl(event.mapsUrl);
-  return <article className="inv-event-card"><span className="inv-event-icon"><CalendarDays size={18}/></span><p className="inv-event-type">{event.type === "akad" ? "AKAD NIKAH" : event.type === "reception" ? "RESEPSI" : "ACARA"}</p><h3>{event.title}</h3><div className="inv-event-detail"><CalendarDays size={15}/><span>{formatDate(event.date, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span></div><div className="inv-event-detail"><Clock3 size={15}/><span>{event.startTime}{event.endTime ? ` — ${event.endTime}` : " — selesai"} WIB</span></div>{(event.venue || event.address) && <div className="inv-event-detail"><MapPin size={15}/><span>{event.venue && <b>{event.venue}</b>}{event.venue && event.address && <br/>}{event.address}</span></div>}{mapUrl && <a className="inv-map-button" href={mapUrl} target="_blank" rel="noopener noreferrer">Lihat Lokasi <ArrowRight size={14}/></a>}</article>;
+  return <article className="inv-event-card"><div className="inv-event-info"><span className="inv-event-icon"><CalendarDays size={18}/></span><p className="inv-event-type">{event.type === "akad" ? "AKAD NIKAH" : event.type === "reception" ? "RESEPSI" : "ACARA"}</p><h3>{event.title}</h3><div className="inv-event-detail"><CalendarDays size={15}/><span>{formatDate(event.date, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span></div><div className="inv-event-detail"><Clock3 size={15}/><span>{event.startTime}{event.endTime ? ` — ${event.endTime}` : " — selesai"} WIB</span></div>{(event.venue || event.address) && <div className="inv-event-detail"><MapPin size={15}/><span>{event.venue && <b>{event.venue}</b>}{event.venue && event.address && <br/>}{event.address}</span></div>}{mapUrl && <a className="inv-map-button" href={mapUrl} target="_blank" rel="noopener noreferrer">Lihat Lokasi <ArrowRight size={14}/></a>}</div>{mapUrl && <MapPreview url={mapUrl} label={event.title || "Lokasi acara"}/>}</article>;
 }
 
 function safeMapUrl(value?: string) {
@@ -228,6 +228,16 @@ function safeMapUrl(value?: string) {
   } catch {
     return "";
   }
+}
+
+function MapPreview({ url, label }: { url: string; label: string }) {
+  const parsed = new URL(url);
+  const isGoogleHost = parsed.hostname === "google.com" || parsed.hostname.endsWith(".google.com");
+  const isGoogleEmbed = isGoogleHost && parsed.pathname.startsWith("/maps/embed")
+    || parsed.hostname === "maps.google.com" && parsed.pathname.startsWith("/maps") && parsed.searchParams.get("output") === "embed";
+  return isGoogleEmbed
+    ? <div className="inv-map-preview"><iframe src={url} title={`Peta ${label}`} loading="lazy" referrerPolicy="no-referrer-when-downgrade"/></div>
+    : <div className="inv-map-preview inv-map-placeholder"><MapPin size={24} aria-hidden="true"/><span>Lokasi tersedia di Google Maps</span></div>;
 }
 
 function GiftCard({ gift }: { gift: GiftItem }) {

@@ -73,7 +73,7 @@ export default async function PublicInvitationPage({ params, searchParams }: { p
     slug={slug} invitation={data} guestName={guestName} isPreview={query.preview === "1"}
     events={eventRows.map((event) => ({ _id: String(event._id), type: event.type, title: event.title, date: serializeDate(event.date), startTime: event.startTime, endTime: event.endTime, venue: event.venue, address: event.address, mapsUrl: event.mapsUrl }))}
     gallery={galleryRows.map((photo) => ({ _id: String(photo._id), imageUrl: mediaUrl(photo.fileId, photo.imageUrl), caption: photo.caption }))}
-    gifts={giftRows.map((gift) => ({ _id: String(gift._id), type: gift.type, provider: gift.provider, accountNumber: gift.accountNumber, accountName: gift.accountName, qrImage: gift.qrImage }))}
+    gifts={giftRows.map((gift) => ({ _id: String(gift._id), type: gift.type, provider: gift.provider, accountNumber: gift.accountNumber, accountName: gift.accountName, qrImage: mediaUrl(gift.fileId, gift.qrImage) }))}
     music={musicRow ? { title: musicRow.title, artist: musicRow.artist ?? "", audioUrl: mediaUrl(musicRow.fileId, musicRow.audioUrl) } : null}
     stories={storyRows.map((story) => ({ _id: String(story._id), year: story.year, title: story.title, description: story.description, imageUrl: mediaUrl(story.fileId, story.imageUrl) }))}
     initialWishes={wishRows.map((wish) => ({ _id: String(wish._id), guestName: wish.guestName, message: wish.message, createdAt: serializeDate(wish.createdAt) }))}
